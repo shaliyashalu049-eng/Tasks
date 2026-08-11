@@ -1,0 +1,74 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+def gaussian_kernel(size, sigma):
+
+    ax = np.arange(-(size // 2), size // 2 + 1)
+
+    xx, yy = np.meshgrid(ax, ax)
+
+    kernel = np.exp(
+        -(xx**2 + yy**2) / (2 * sigma**2)
+    )
+
+    kernel = kernel / np.sum(kernel)
+
+    return kernel
+
+
+# 2. Apply Gaussian filter
+def gaussian_filter(image, kernel):
+
+    k = kernel.shape[0]
+    pad = k // 2
+
+    padded = np.pad(
+        image,
+        ((pad, pad), (pad, pad)),
+        mode="reflect"
+    )
+
+    output = np.zeros_like(
+        image,
+        dtype=np.float64
+    )
+
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+
+            region = padded[
+                i:i+k,
+                j:j+k
+            ]
+
+            output[i, j] = np.sum(
+                region * kernel
+            )
+
+    return np.clip(
+        output, 0, 255
+    ).astype(np.uint8)
+
+img = cv2.imread("img.jpg")
+
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+kernel = gaussian_kernel(5, 1)
+
+print("Gaussian Kernel:")
+print(kernel)
+
+blurred = gaussian_filter(gray, kernel)
+
+plt.subplot(1, 2, 1)
+plt.imshow(gray, cmap="gray")
+plt.title("Original")
+plt.axis("off")
+
+plt.subplot(1, 2, 2)
+plt.imshow(blurred, cmap="gray")
+plt.title("Gaussian Filtered")
+plt.axis("off")
+
+plt.tight_layout()
+plt.show()

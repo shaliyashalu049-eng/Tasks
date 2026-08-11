@@ -1,0 +1,17 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+#image = np.array([
+#    [0, 50, 100],
+#   [75, 150, 200],
+#   [100, 200, 255]
+#])
+
+#plt.imshow(image, cmap='gray')
+#plt.show()
+image = np.zeros((100, 100, 3), dtype=np.uint8)
+image[:, :, 0] = 255
+plt.imshow(image)
+plt.axis('off')
+plt.show()
