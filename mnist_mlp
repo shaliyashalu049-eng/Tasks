@@ -1,0 +1,247 @@
+import numpy as np
+from sklearn.datasets import fetch_openml
+import matplotlib.pyplot as plt
+
+# 1. Load MNIST Dataset
+
+print("Loading MNIST dataset...")
+mnist = fetch_openml(
+    'mnist_784',
+    version=1,
+    as_frame=False
+)
+
+X = mnist.data.astype(np.float32)
+y = mnist.target.astype(np.int64)
+
+# Split dataset
+X_train = X[:60000]
+y_train = y[:60000]
+
+X_test = X[60000:]
+y_test = y[60000:]
+
+# Normalize pixel values from 0-255 to 0-1
+X_train = X_train / 255.0
+X_test = X_test / 255.0
+
+print("Dataset loaded successfully.")
+print("Training samples:", X_train.shape[0])
+print("Testing samples:", X_test.shape[0])
+
+# 2. One-Hot Encoding
+
+
+def one_hot(y, num_classes=10):
+    result = np.zeros((len(y), num_classes))
+    result[np.arange(len(y)), y] = 1
+    return result
+
+
+Y_train = one_hot(y_train)
+
+# 3. Initialize MLP Parameters
+
+np.random.seed(42)
+
+# Architecture:
+# Input Layer  : 784 neurons
+# Hidden Layer : 128 neurons
+# Output Layer : 10 neurons
+
+W1 = np.random.randn(784, 128) * np.sqrt(2 / 784)
+b1 = np.zeros((1, 128))
+
+W2 = np.random.randn(128, 10) * np.sqrt(2 / 128)
+b2 = np.zeros((1, 10))
+
+# 4. Activation Functions
+
+
+def relu(x):
+    return np.maximum(0, x)
+
+
+def relu_derivative(x):
+    return (x > 0).astype(np.float32)
+
+
+def softmax(x):
+    # Numerical stability
+    x = x - np.max(x, axis=1, keepdims=True)
+
+    exp_x = np.exp(x)
+
+    return exp_x / np.sum(
+        exp_x,
+        axis=1,
+        keepdims=True
+    )
+
+
+# 5. Training Parameters
+
+learning_rate = 0.01
+epochs = 10
+batch_size = 64
+
+# Store loss values for visualization
+loss_history = []
+
+# 6. Train the MLP
+
+for epoch in range(epochs):
+
+    # Shuffle training data
+    indices = np.random.permutation(len(X_train))
+
+    X_train_shuffled = X_train[indices]
+    Y_train_shuffled = Y_train[indices]
+
+    total_loss = 0
+
+    # Mini-batch training
+    for i in range(0, len(X_train), batch_size):
+
+        X_batch = X_train_shuffled[i:i + batch_size]
+        Y_batch = Y_train_shuffled[i:i + batch_size]
+
+        m = X_batch.shape[0]
+
+ # Forward Propagation
+
+        # Input Layer -> Hidden Layer
+        Z1 = X_batch @ W1 + b1
+
+        # ReLU activation
+        A1 = relu(Z1)
+
+        # Hidden Layer -> Output Layer
+        Z2 = A1 @ W2 + b2
+
+        # Softmax activation
+        A2 = softmax(Z2)
+
+# Cross-Entropy Loss
+
+
+        loss = -np.sum(
+            Y_batch * np.log(A2 + 1e-8)
+        ) / m
+
+        total_loss += loss * m
+
+ # Backpropagation
+
+        # Output layer gradient
+        dZ2 = (A2 - Y_batch) / m
+
+        # Gradients for W2 and b2
+        dW2 = A1.T @ dZ2
+        db2 = np.sum(
+            dZ2,
+            axis=0,
+            keepdims=True
+        )
+
+        # Propagate error to hidden layer
+        dA1 = dZ2 @ W2.T
+
+        # Apply derivative of ReLU
+        dZ1 = dA1 * relu_derivative(Z1)
+
+        # Gradients for W1 and b1
+        dW1 = X_batch.T @ dZ1
+        db1 = np.sum(
+            dZ1,
+            axis=0,
+            keepdims=True
+        )
+
+# Gradient Descent
+
+        W1 -= learning_rate * dW1
+        b1 -= learning_rate * db1
+
+        W2 -= learning_rate * dW2
+        b2 -= learning_rate * db2
+
+
+# Calculate Average Loss
+
+    average_loss = total_loss / len(X_train)
+
+    # Save loss for plotting
+    loss_history.append(average_loss)
+
+
+ # Calculate Training Accuracy
+
+    Z1 = X_train @ W1 + b1
+    A1 = relu(Z1)
+
+    Z2 = A1 @ W2 + b2
+    A2 = softmax(Z2)
+
+    train_predictions = np.argmax(A2, axis=1)
+
+    train_accuracy = np.mean(
+        train_predictions == y_train
+    )
+
+    # Display Epoch Results
+
+    print(
+        f"Epoch {epoch + 1}/{epochs} "
+        f"- Loss: {average_loss:.4f} "
+        f"- Training Accuracy: {train_accuracy:.4f}"
+    )
+
+# 7. Test the Trained MLP
+
+print("\nTesting the trained MLP...")
+
+Z1 = X_test @ W1 + b1
+A1 = relu(Z1)
+
+Z2 = A1 @ W2 + b2
+A2 = softmax(Z2)
+
+test_predictions = np.argmax(A2, axis=1)
+
+test_accuracy = np.mean(
+    test_predictions == y_test
+)
+
+print(
+    f"Test Accuracy: {test_accuracy:.4f}"
+)
+
+# 8. Display Sample Predictions
+
+print("\nSample Predictions:")
+
+for i in range(10):
+
+    print(
+        f"Image {i + 1}: "
+        f"Predicted = {test_predictions[i]}, "
+        f"Actual = {y_test[i]}"
+    )
+
+# 9. Visualize Loss Curve
+
+plt.plot(
+    range(1, epochs + 1),
+    loss_history,
+    marker='o'
+)
+
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("MLP Training Loss Curve")
+
+plt.xticks(range(1, epochs + 1))
+plt.grid(True)
+
+plt.show()
